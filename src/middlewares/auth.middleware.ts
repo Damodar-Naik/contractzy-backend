@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { sendError } from '../utils/ErrorHandler';
 
 export const authenticateJWT = (req: any, res: Response, next: NextFunction) => {
-    debugger
     const authHeader = req.headers.authorization;
 
     if (authHeader) {

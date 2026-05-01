@@ -23,6 +23,23 @@ export const statusUpdateValidator = [
     validateResult
 ];
 
+export const contractUpdateValidator = [
+    body('description')
+        .optional()
+        .isString().withMessage('Description must be a string'),
+    body()
+        .custom((_, { req }) => {
+            if (req.body.description === undefined) {
+                throw new Error('Description must be provided');
+            }
+            if (req.body.title !== undefined) {
+                throw new Error('Title cannot be edited');
+            }
+            return true;
+        }),
+    validateResult
+];
+
 export const paginationValidator = [
     query('page')
         .optional()
@@ -30,5 +47,10 @@ export const paginationValidator = [
     query('limit')
         .optional()
         .isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+    query('title')
+        .optional()
+        .trim()
+        .notEmpty().withMessage('Title search cannot be empty')
+        .isString().withMessage('Title search must be a string'),
     validateResult
 ];

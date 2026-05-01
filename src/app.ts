@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 // Import database connection and test utility
-import { sequelize, testConnection } from './config/database';
+import { sequelize, testConnection } from './core/db/connection';
 import './models/associations';
 
 // Import Routes

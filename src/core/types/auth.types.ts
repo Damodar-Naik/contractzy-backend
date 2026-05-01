@@ -1,17 +1,15 @@
-// src/core/types/auth.types.ts
+// After
 export enum UserRole {
-    ADMIN = 'ADMIN',
-    LEGAL = 'LEGAL',
-    SALES = 'SALES'
+    ADMIN = 'admin',
+    BU = 'bu',
+    VIEWER = 'viewer'
 }
 
 export interface AuthUser {
-    id: number;
-    tenantId: string; // Essential for SaaS multi-tenancy
+    id: string;        // UUID, not number
     role: UserRole;
 }
 
-// Extend Express Request
 declare global {
     namespace Express {
         interface Request {
