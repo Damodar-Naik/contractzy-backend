@@ -51,32 +51,23 @@ export const signup = async (req: Request, res: Response) => {
     }
 };
 
+// After
 export const login = async (req: Request, res: Response) => {
     try {
-        
         const { email, password } = req.body;
 
-        // Find user (paranoid: true ensures we don't log in soft-deleted users)
         const user = await User.findOne({ where: { email } });
-        // Login Controller snippet
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-            return sendError(res, 401, 'Invalid Credentials'); // 401 Unauthorized
+            return sendError(res, 401, 'Invalid Credentials');
         }
 
-        // Compare password with password_hash
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-
-        // Generate JWT with Role
         const token = jwt.sign(
-            { id: user.id, role: user.role },
+            { id: user.id, name: user.role, role: user.role },
             process.env.JWT_SECRET || 'secret',
             { expiresIn: '1d' }
         );
 
-        return res.status(200).json({ token, role: user.role });
+        return res.status(200).json({ token, user: { id: user.id, name: user.role, role: user.role } });
     } catch (error) {
         return res.status(500).json({ message: 'Login failed', error });
     }
