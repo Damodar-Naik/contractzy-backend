@@ -44,6 +44,8 @@ DB_PASSWORD='Your_Password'
 
 CORS_ORIGINS="http://localhost:4200"
 JWT_SECRET=super-secret-jwt-key
+
+NODE_ENV=production
 ```
 
 

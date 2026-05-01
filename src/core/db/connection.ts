@@ -12,6 +12,15 @@ export const sequelize = new Sequelize({
     dialect: 'postgres',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+    dialectOptions: {
+        // ✅ Fix 1: Always use SSL (Supabase requires it, even locally)
+        ssl: {
+            require: process.env.NODE_ENV === 'development' ? false : true,
+            rejectUnauthorized: process.env.NODE_ENV === 'development' ? false : true
+        },
+        // ✅ Fix 2: CRITICAL for Port 6543 (Transaction Pooling)
+        prepare: process.env.NODE_ENV === 'development' ? false :true,
+    },
 });
 
 export const testConnection = async (): Promise<void> => {
