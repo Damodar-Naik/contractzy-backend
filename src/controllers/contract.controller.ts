@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Op } from 'sequelize';
 import '../models/associations';
 import Contract from '../models/Contract';
 import AuditLog from '../models/AuditLog';
@@ -11,13 +12,35 @@ type ContractParams = {
 
 /**
  * GET /api/contracts
- * Returns all non-deleted contracts.
+ * Returns a paginated list of non-deleted contracts with optional title search.
  */
 export const getContracts = async (req: Request, res: Response) => {
     try {
-        debugger
-        const contracts = await Contract.findAll();
-        return res.status(200).json(contracts);
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
+        const offset = (page - 1) * limit;
+
+        const where = title
+            ? { title: { [Op.iLike]: `%${title}%` } }
+            : undefined;
+
+        const { count, rows: contracts } = await Contract.findAndCountAll({
+            where,
+            limit,
+            offset,
+            order: [['created_at', 'DESC']]
+        });
+
+        return res.status(200).json({
+            data: contracts,
+            pagination: {
+                page,
+                limit,
+                total: count,
+                totalPages: Math.ceil(count / limit)
+            }
+        });
     } catch (error: any) {
         return sendError(res, 500, 'Failed to fetch contracts', error.message);
     }
@@ -28,7 +51,6 @@ export const getContracts = async (req: Request, res: Response) => {
  * Returns contract details plus the audit log history.
  */
 export const getContractById = async (req: Request<ContractParams>, res: Response) => {
-    debugger
     const { id } = req.params;
     
     try {
@@ -77,6 +99,71 @@ export const createContract = async (req: any, res: Response) => {
     } catch (error: any) {
         if (transaction) await transaction.rollback();
         return sendError(res, 400, 'Could not create contract: Transaction rolled back', error.message);
+    }
+};
+
+/**
+ * PATCH /api/contracts/:id
+ * Updates contract description and audit logs the change.
+ */
+export const updateContract = async (req: any, res: Response) => {
+    const { id } = req.params;
+    const { description } = req.body;
+    const { id: userId } = req.user;
+
+    const transaction = await sequelize.transaction();
+
+    try {
+        const contract = await Contract.findByPk(id, { transaction });
+
+        if (!contract) {
+            await transaction.rollback();
+            return sendError(res, 404, 'Contract not found');
+        }
+
+        const isEditableState = ['draft', 'pending_review'].includes(contract.status);
+        if (!isEditableState) {
+            await transaction.rollback();
+            return sendError(res, 403, `Forbidden: Contracts can only be edited in DRAFT or PENDING_REVIEW state. Current state: ${contract.status.toUpperCase()}.`);
+        }
+
+        const updates: Partial<{ description: string }> = {};
+        const oldValue: Partial<{ description: string | null }> = {};
+        const newValue: Partial<{ description: string }> = {};
+
+        if (description !== undefined && description !== contract.description) {
+            updates.description = description;
+            oldValue.description = contract.description;
+            newValue.description = description;
+        }
+
+        if (Object.keys(updates).length === 0) {
+            await transaction.rollback();
+            return res.status(200).json({
+                message: 'No changes detected',
+                data: contract
+            });
+        }
+
+        await contract.update(updates, { transaction });
+
+        await AuditLog.create({
+            contract_id: contract.id,
+            action: 'CONTRACT_UPDATED',
+            performed_by: userId,
+            old_value: oldValue,
+            new_value: newValue
+        }, { transaction });
+
+        await transaction.commit();
+
+        return res.status(200).json({
+            message: 'Contract updated and audited successfully',
+            data: contract
+        });
+    } catch (error: any) {
+        if (transaction) await transaction.rollback();
+        return sendError(res, 500, 'Transaction failed: Contract update and audit rolled back', error.message);
     }
 };
 

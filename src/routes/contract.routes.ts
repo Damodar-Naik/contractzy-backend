@@ -3,6 +3,7 @@ import * as ctrl from '../controllers/contract.controller';
 import { authenticateJWT, authorizeRole } from '../middlewares/auth.middleware';
 import {
     contractCreateValidator,
+    contractUpdateValidator,
     statusUpdateValidator,
     paginationValidator
 } from '../middlewares/contract.validator';
@@ -31,6 +32,13 @@ router.post('/',
 );
 
 // 4. PATCH - Status update (Restricted to Admin & BU + Lifecycle Guard in Controller)
+router.patch('/:id',
+    authorizeRole(['admin', 'bu']),
+    contractUpdateValidator,
+    ctrl.updateContract
+);
+
+// 5. PATCH - Status update (Restricted to Admin & BU + Lifecycle Guard in Controller)
 router.patch('/:id/status',
     authorizeRole(['admin', 'bu']),
     statusUpdateValidator,
